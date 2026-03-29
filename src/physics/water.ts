@@ -2,21 +2,24 @@
  * 水面シミュレーション — 2Dの波動方程式ベース
  *
  * グリッド上の各セルが高さを持ち、隣接セルとの平均化 + 減衰で波が伝播する。
- * disturb() で外から力を加え、update() で1ステップ進め、draw() で描画する。
+ * 描画は小さなオフスクリーンcanvasに1px/cellで描いてからスケーリングで拡大。
+ * ブラウザのバイリニア補間が効くのでブロッキーにならない。
  */
 
 import type { WaterSurface } from '../types';
 
-/** 1セルあたりのピクセル数 */
-const CELL = 6;
-/** 波の減衰率 (1.0 = 減衰なし) */
-const DAMPING = 0.96;
+const CELL = 4;
+const DAMPING = 0.97;
 
 export function createWater(width: number, height: number): WaterSurface {
   let cols = Math.ceil(width / CELL) + 2;
   let rows = Math.ceil(height / CELL) + 2;
   let curr = new Float32Array(cols * rows);
   let prev = new Float32Array(cols * rows);
+
+  // オフスクリーンcanvasで1セル=1ピクセルとして描画し、拡大で滑らかに見せる
+  let offscreen = new OffscreenCanvas(cols, rows);
+  let offCtx = offscreen.getContext('2d')!;
 
   function idx(c: number, r: number) {
     return r * cols + c;
@@ -28,12 +31,14 @@ export function createWater(width: number, height: number): WaterSurface {
       rows = Math.ceil(h / CELL) + 2;
       curr = new Float32Array(cols * rows);
       prev = new Float32Array(cols * rows);
+      offscreen = new OffscreenCanvas(cols, rows);
+      offCtx = offscreen.getContext('2d')!;
     },
 
     disturb(x: number, y: number, force: number) {
       const cc = Math.round(x / CELL);
       const cr = Math.round(y / CELL);
-      const radius = 3;
+      const radius = 5;
       for (let dr = -radius; dr <= radius; dr++) {
         for (let dc = -radius; dc <= radius; dc++) {
           const c = cc + dc;
@@ -41,7 +46,8 @@ export function createWater(width: number, height: number): WaterSurface {
           if (c > 0 && c < cols - 1 && r > 0 && r < rows - 1) {
             const dist = Math.sqrt(dc * dc + dr * dr);
             if (dist <= radius) {
-              curr[idx(c, r)] += force * (1 - dist / radius);
+              const falloff = (1 - dist / radius);
+              curr[idx(c, r)] += force * falloff * falloff;
             }
           }
         }
@@ -53,7 +59,6 @@ export function createWater(width: number, height: number): WaterSurface {
       for (let r = 1; r < rows - 1; r++) {
         for (let c = 1; c < cols - 1; c++) {
           const i = idx(c, r);
-          // 波動方程式の離散近似: 隣接4セルの平均×2 − 前フレームの値
           const avg =
             (curr[idx(c - 1, r)] +
               curr[idx(c + 1, r)] +
@@ -78,18 +83,59 @@ export function createWater(width: number, height: number): WaterSurface {
     },
 
     draw(ctx: CanvasRenderingContext2D, w: number, h: number) {
-      const drawCols = Math.ceil(w / CELL);
-      const drawRows = Math.ceil(h / CELL);
-      for (let r = 0; r < drawRows; r++) {
-        for (let c = 0; c < drawCols; c++) {
-          const val = c < cols && r < rows ? curr[idx(c, r)] : 0;
-          // 水面の高さを明度に変換。ベースは暗い深海色
-          const brightness = Math.max(0, Math.min(255, 8 + val * 100));
-          const blue = Math.max(0, Math.min(255, 30 + val * 200));
-          ctx.fillStyle = `rgb(${brightness * 0.2},${brightness * 0.4},${blue})`;
-          ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+      const imageData = offCtx.createImageData(cols, rows);
+      const data = imageData.data;
+
+      for (let r = 1; r < rows - 1; r++) {
+        for (let c = 1; c < cols - 1; c++) {
+          const i = idx(c, r);
+          const val = curr[i];
+
+          // 隣接セルとの差分で擬似法線を求める → 光の反射
+          const dx = curr[idx(c + 1, r)] - curr[idx(c - 1, r)];
+          const dy = curr[idx(c, r + 1)] - curr[idx(c, r - 1)];
+
+          // 左上からの光源を想定したハイライト
+          const light = dx * -0.8 + dy * -0.6;
+
+          // ベースカラー: 深い藍色
+          const baseR = 6;
+          const baseG = 18;
+          const baseB = 42;
+
+          // 高さで明度を変え、法線でハイライトを乗せる
+          const heightBright = val * 30;
+          const lightBright = light * 60;
+          const total = heightBright + lightBright;
+
+          const pi = (r * cols + c) * 4;
+          data[pi] = Math.max(0, Math.min(255, baseR + total * 0.5));
+          data[pi + 1] = Math.max(0, Math.min(255, baseG + total * 0.9));
+          data[pi + 2] = Math.max(0, Math.min(255, baseB + total * 1.4));
+          data[pi + 3] = 255;
         }
       }
+
+      // 端のピクセルもベースカラーで埋める
+      for (let r = 0; r < rows; r++) {
+        for (const c of [0, cols - 1]) {
+          const pi = (r * cols + c) * 4;
+          data[pi] = 6; data[pi + 1] = 18; data[pi + 2] = 42; data[pi + 3] = 255;
+        }
+      }
+      for (let c = 0; c < cols; c++) {
+        for (const r of [0, rows - 1]) {
+          const pi = (r * cols + c) * 4;
+          data[pi] = 6; data[pi + 1] = 18; data[pi + 2] = 42; data[pi + 3] = 255;
+        }
+      }
+
+      offCtx.putImageData(imageData, 0, 0);
+
+      // バイリニア補間で拡大 → 滑らかな水面
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'medium';
+      ctx.drawImage(offscreen, 0, 0, w, h);
     },
   };
 }

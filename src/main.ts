@@ -42,7 +42,10 @@ function loop(time: number) {
 
   // 2. タッチで水面を直接揺らす
   if (input.active) {
-    water.disturb(input.x, input.y, input.pressure * 15);
+    // 圧力 + 指の移動速度で力を決める（速く撫でると大きく揺れる）
+    const speed = Math.sqrt(input.vx * input.vx + input.vy * input.vy);
+    const force = input.pressure * 30 + speed * 0.08;
+    water.disturb(input.x, input.y, force);
   }
 
   // 3. 生き物たちを動かす（水面にも影響する）
