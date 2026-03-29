@@ -64,6 +64,9 @@ export function createResponder() {
 
       // --- 指が離れた瞬間: 軌跡を応答キューに送る ---
       if (wasActive && !input.active && currentTrace.length > 2) {
+        // 古い応答を押し出す（高速連打で際限なく積まないように）
+        if (pending.length >= 4) pending.shift();
+
         const angle = Math.random() * Math.PI * 2;
         const dist = OFFSET_RANGE * (0.4 + Math.random() * 0.6);
 
