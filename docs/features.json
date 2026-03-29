@@ -1,0 +1,6 @@
+[
+  { "name": "全画面Canvas表示（モバイル対応）", "status": "todo", "passes": false },
+  { "name": "タッチ座標・圧力・速度の取得", "status": "todo", "passes": false },
+  { "name": "タッチに反応する波紋エフェクト", "status": "todo", "passes": false },
+  { "name": "水面下に何かいる気配の表現", "status": "todo", "passes": false }
+]
