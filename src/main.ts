@@ -9,6 +9,7 @@ import { initCanvas, getSize } from './canvas';
 import { initInput, getInputState } from './input';
 import { createWater } from './physics/water';
 import { createCreature } from './creatures/creature';
+import { createEcho } from './creatures/echo';
 
 // --- 初期化 ---
 const canvasEl = document.querySelector<HTMLCanvasElement>('#canvas')!;
@@ -22,6 +23,7 @@ const creatures = [
   createCreature(width * 0.3, height * 0.4, { width, height }),
   createCreature(width * 0.7, height * 0.3, { width, height }),
   createCreature(width * 0.5, height * 0.7, { width, height }),
+  createEcho(),
 ];
 
 // --- リサイズ対応 ---
