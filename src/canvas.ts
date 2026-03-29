@@ -19,7 +19,7 @@ export function resize() {
 }
 
 export function clear() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 }
 
 export function getSize() {
