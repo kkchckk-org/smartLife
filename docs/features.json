@@ -1,7 +1,8 @@
 [
-  { "name": "全画面Canvas表示（モバイル対応）", "status": "todo", "passes": false },
-  { "name": "タッチ座標・圧力・速度の取得", "status": "todo", "passes": false },
-  { "name": "タッチに反応する波紋エフェクト", "status": "todo", "passes": false },
-  { "name": "水面下に何かいる気配の表現", "status": "todo", "passes": false },
-  { "name": "コアアーキテクチャ定義（ゲームループ・型・モジュール分割）", "status": "done", "passes": true }
+  { "name": "全画面Canvas表示（モバイル対応）", "status": "done", "passes": true },
+  { "name": "タッチ座標・圧力・速度の取得", "status": "done", "passes": true },
+  { "name": "タッチに反応する波紋エフェクト", "status": "done", "passes": true },
+  { "name": "水面下に何かいる気配の表現", "status": "done", "passes": true },
+  { "name": "コアアーキテクチャ定義（ゲームループ・型・モジュール分割）", "status": "done", "passes": true },
+  { "name": "水面の触り心地改善（滑らか描画・法線ライティング・呼吸リズム）", "status": "done", "passes": true }
 ]
