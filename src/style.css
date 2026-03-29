@@ -9,7 +9,7 @@ html, body {
   height: 100%;
   overflow: hidden;
   touch-action: none;
-  background: #000;
+  background: #f0f0f0;
 }
 
 canvas {

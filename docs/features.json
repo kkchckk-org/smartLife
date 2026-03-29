@@ -4,5 +4,7 @@
   { "name": "タッチに反応する波紋エフェクト", "status": "done", "passes": true },
   { "name": "水面下に何かいる気配の表現", "status": "done", "passes": true },
   { "name": "コアアーキテクチャ定義（ゲームループ・型・モジュール分割）", "status": "done", "passes": true },
-  { "name": "水面の触り心地改善（滑らか描画・法線ライティング・呼吸リズム）", "status": "done", "passes": true }
+  { "name": "水面の触り心地改善（滑らか描画・法線ライティング・呼吸リズム）", "status": "done", "passes": true },
+  { "name": "水面の呼吸（複数周期の正弦波による自律的な揺らぎ）", "status": "done", "passes": true },
+  { "name": "白ベースの配色（凹凸を影として表現）", "status": "done", "passes": true }
 ]
