@@ -9,6 +9,7 @@ import { initCanvas, getSize } from './canvas';
 import { initInput, getInputState } from './input';
 import { createWater } from './physics/water';
 import { createCreature } from './creatures/creature';
+import { createResponder } from './creatures/responder';
 
 // --- 初期化 ---
 const canvasEl = document.querySelector<HTMLCanvasElement>('#canvas')!;
@@ -23,6 +24,8 @@ const creatures = [
   createCreature(width * 0.7, height * 0.3, { width, height }),
   createCreature(width * 0.5, height * 0.7, { width, height }),
 ];
+
+const responder = createResponder();
 
 // --- リサイズ対応 ---
 window.addEventListener('resize', () => {
@@ -44,7 +47,7 @@ function loop(time: number) {
   if (input.active) {
     // 圧力 + 指の移動速度で力を決める（速く撫でると大きく揺れる）
     const speed = Math.sqrt(input.vx * input.vx + input.vy * input.vy);
-    const force = input.pressure * 30 + speed * 0.08;
+    const force = input.pressure * 15 + speed * 0.05;
     water.disturb(input.x, input.y, force);
   }
 
@@ -53,10 +56,13 @@ function loop(time: number) {
     c.update(dt, input, water);
   }
 
-  // 4. 水面の物理演算
+  // 4. 応答 — 指の痕跡を覚えて、間をおいて、なぞり返す
+  responder.update(dt, input, water);
+
+  // 5. 水面の物理演算
   water.update(dt);
 
-  // 5. 描画
+  // 6. 描画
   const { width: w, height: h } = getSize();
   water.draw(ctx, w, h);
 
