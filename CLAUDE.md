@@ -2,44 +2,47 @@
 
 ## 哲学
 
-- **スマートフォンの身体性**: タッチスクリーンを「入力装置」ではなく「皮膚」として捉える
-- **そこに何かいる**: 画面の向こう側に存在を感じさせる。目的のない触れ合いの心地よさ
+- タッチスクリーンは入力装置ではなく「皮膚」
+- 目的のない触れ合いの中に「そこに何かいる」と感じさせる
+- 小さく作り、触って確かめながら育てる
 
-## 技術スタック
+## 不変条件
 
-- Vite + vanilla TypeScript + Canvas API
-- 必要に応じて WebGL / Three.js に拡張可
+- 依存方向は一方向: `input → creatures → physics → canvas`
+- Vite + vanilla TypeScript + Canvas API（必要時 WebGL 拡張可）
+- 完了条件は「触って確認できること」を含める
 
-## アーキテクチャ
+## エージェント駆動
 
-依存方向は一方向に保つ:
+メイン会話はオーケストレーター。実作業はサブエージェントに委譲する。
 
-```
-input.ts → creatures/ → physics/ → canvas.ts
-```
+| エージェント | モデル | 責務 |
+|---|---|---|
+| planner | opus | 設計・仕様化 → `docs/specs/` に書き出す |
+| coder | haiku | 実装（コミットはしない） |
+| reviewer | sonnet | レビュー → `notes.md` に結果を残す |
 
-## ディレクトリ構成
+フロー: きくちが方向提示 → planner → coder → reviewer → メインが確認・コミット
 
-```
-src/
-├── main.ts        # エントリーポイント
-├── canvas.ts      # Canvas管理（リサイズ、DPI、描画ループ）
-├── input.ts       # タッチ/マウス入力の抽象化
-├── creatures/     # 「そこにいる何か」の振る舞い
-└── physics/       # 水・質感の物理シミュレーション
-```
+## 状態ファイル
 
-## セッション開始手順
+| ファイル | 役割 |
+|---|---|
+| `docs/features.json` | 機能一覧と進捗 |
+| `docs/specs/<id>/` | 機能仕様 (spec.md) + 実装メモ (notes.md) |
+| `docs/map.md` | モジュール関係図 |
+| `docs/design.md` | 設計判断の記録 |
+| `docs/process.md` | 運用詳細（状態遷移・レビュー・テンプレート） |
 
-1. `git pull`
-2. `cat CLAUDE.md` で地図を把握
-3. `cat docs/features.json` で進捗確認
-4. `git log --oneline -10` で直近の作業確認
-5. `npm run dev` で開発サーバー起動
-6. features.json から最優先の "todo" を1つ選んで実装開始
+## セッション開始
+
+1. `git status -s` — dirty worktree の確認
+2. `cat docs/features.json` — 進捗確認
+3. `git log --oneline -5` — 直近の作業
 
 ## ルール
 
-- 1セッション = 1機能。コンテキストが溢れる前に区切る
-- 機能完了時は features.json を更新してからコミット
-- コミットメッセージは次のセッションへの引き継ぎ資料。説明的に書く
+- 1セッション = 1機能
+- コミットはレビュー通過後のみ
+- 作業後は features.json を更新してから終える
+- 詳細は `docs/process.md` を参照
