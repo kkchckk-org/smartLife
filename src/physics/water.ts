@@ -4,6 +4,9 @@
  * グリッド上の各セルが高さを持ち、隣接セルとの平均化 + 減衰で波が伝播する。
  * 描画は小さなオフスクリーンcanvasに1px/cellで描いてからスケーリングで拡大。
  * ブラウザのバイリニア補間が効くのでブロッキーにならない。
+ *
+ * 呼吸: 複数の正弦波を重ねて画面全体をゆっくり揺らす。
+ * 周期が異なるので機械的な繰り返しにならない。
  */
 
 import type { WaterSurface } from '../types';
@@ -17,9 +20,11 @@ export function createWater(width: number, height: number): WaterSurface {
   let curr = new Float32Array(cols * rows);
   let prev = new Float32Array(cols * rows);
 
-  // オフスクリーンcanvasで1セル=1ピクセルとして描画し、拡大で滑らかに見せる
   let offscreen = new OffscreenCanvas(cols, rows);
   let offCtx = offscreen.getContext('2d')!;
+
+  // 呼吸の経過時間
+  let elapsed = 0;
 
   function idx(c: number, r: number) {
     return r * cols + c;
@@ -46,7 +51,7 @@ export function createWater(width: number, height: number): WaterSurface {
           if (c > 0 && c < cols - 1 && r > 0 && r < rows - 1) {
             const dist = Math.sqrt(dc * dc + dr * dr);
             if (dist <= radius) {
-              const falloff = (1 - dist / radius);
+              const falloff = 1 - dist / radius;
               curr[idx(c, r)] += force * falloff * falloff;
             }
           }
@@ -54,7 +59,27 @@ export function createWater(width: number, height: number): WaterSurface {
       }
     },
 
-    update(_dt: number) {
+    update(dt: number) {
+      elapsed += dt;
+
+      // --- 呼吸: 複数の周期の波を重ねて水面全体をゆっくり揺らす ---
+      // 周期の異なる3つの波を重ねることで、繰り返し感を消す
+      const breathA = Math.sin(elapsed * 0.4) * 0.15;   // ~15秒周期
+      const breathB = Math.sin(elapsed * 0.27) * 0.10;  // ~23秒周期
+      const breathC = Math.sin(elapsed * 0.17) * 0.08;  // ~37秒周期
+
+      for (let r = 1; r < rows - 1; r++) {
+        for (let c = 1; c < cols - 1; c++) {
+          // 場所によって位相をずらす（全体が均一に動かないように）
+          const px = c / cols;
+          const py = r / rows;
+          const spatial = Math.sin(px * 3.0 + elapsed * 0.3)
+                        * Math.cos(py * 2.5 + elapsed * 0.2);
+          curr[idx(c, r)] += (breathA + breathB + breathC) * (0.6 + 0.4 * spatial) * dt;
+        }
+      }
+
+      // --- 波動方程式 ---
       const next = new Float32Array(cols * rows);
       for (let r = 1; r < rows - 1; r++) {
         for (let c = 1; c < cols - 1; c++) {
@@ -88,51 +113,42 @@ export function createWater(width: number, height: number): WaterSurface {
 
       for (let r = 1; r < rows - 1; r++) {
         for (let c = 1; c < cols - 1; c++) {
-          const i = idx(c, r);
-          const val = curr[i];
+          // 隣接セルとの差分で擬似法線 → 光の反射
+          const ndx = curr[idx(c + 1, r)] - curr[idx(c - 1, r)];
+          const ndy = curr[idx(c, r + 1)] - curr[idx(c, r - 1)];
 
-          // 隣接セルとの差分で擬似法線を求める → 光の反射
-          const dx = curr[idx(c + 1, r)] - curr[idx(c - 1, r)];
-          const dy = curr[idx(c, r + 1)] - curr[idx(c, r - 1)];
+          // 上方からの光源
+          const light = ndx * -0.6 + ndy * -0.8;
 
-          // 左上からの光源を想定したハイライト
-          const light = dx * -0.8 + dy * -0.6;
+          // 白ベース: 凹凸を影として表現
+          const base = 240;
+          const shadow = light * 80;
 
-          // ベースカラー: 深い藍色
-          const baseR = 6;
-          const baseG = 18;
-          const baseB = 42;
-
-          // 高さで明度を変え、法線でハイライトを乗せる
-          const heightBright = val * 30;
-          const lightBright = light * 60;
-          const total = heightBright + lightBright;
-
+          const v = Math.max(0, Math.min(255, base + shadow));
           const pi = (r * cols + c) * 4;
-          data[pi] = Math.max(0, Math.min(255, baseR + total * 0.5));
-          data[pi + 1] = Math.max(0, Math.min(255, baseG + total * 0.9));
-          data[pi + 2] = Math.max(0, Math.min(255, baseB + total * 1.4));
+          data[pi] = v;
+          data[pi + 1] = v;
+          data[pi + 2] = v;
           data[pi + 3] = 255;
         }
       }
 
-      // 端のピクセルもベースカラーで埋める
+      // 端もベースカラーで埋める
       for (let r = 0; r < rows; r++) {
         for (const c of [0, cols - 1]) {
           const pi = (r * cols + c) * 4;
-          data[pi] = 6; data[pi + 1] = 18; data[pi + 2] = 42; data[pi + 3] = 255;
+          data[pi] = 240; data[pi + 1] = 240; data[pi + 2] = 240; data[pi + 3] = 255;
         }
       }
       for (let c = 0; c < cols; c++) {
         for (const r of [0, rows - 1]) {
           const pi = (r * cols + c) * 4;
-          data[pi] = 6; data[pi + 1] = 18; data[pi + 2] = 42; data[pi + 3] = 255;
+          data[pi] = 240; data[pi + 1] = 240; data[pi + 2] = 240; data[pi + 3] = 255;
         }
       }
 
       offCtx.putImageData(imageData, 0, 0);
 
-      // バイリニア補間で拡大 → 滑らかな水面
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'medium';
       ctx.drawImage(offscreen, 0, 0, w, h);
