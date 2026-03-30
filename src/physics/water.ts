@@ -120,9 +120,9 @@ export function createWater(width: number, height: number): WaterSurface {
           // 上方からの光源
           const light = ndx * -0.6 + ndy * -0.8;
 
-          // 白ベース: 凹凸を影として表現
-          const base = 240;
-          const shadow = light * 80;
+          // 黒ベース: 凹凸を光として表現
+          const base = 15;
+          const shadow = light * 60;
 
           const v = Math.max(0, Math.min(255, base + shadow));
           const pi = (r * cols + c) * 4;
@@ -137,13 +137,13 @@ export function createWater(width: number, height: number): WaterSurface {
       for (let r = 0; r < rows; r++) {
         for (const c of [0, cols - 1]) {
           const pi = (r * cols + c) * 4;
-          data[pi] = 240; data[pi + 1] = 240; data[pi + 2] = 240; data[pi + 3] = 255;
+          data[pi] = 15; data[pi + 1] = 15; data[pi + 2] = 15; data[pi + 3] = 255;
         }
       }
       for (let c = 0; c < cols; c++) {
         for (const r of [0, rows - 1]) {
           const pi = (r * cols + c) * 4;
-          data[pi] = 240; data[pi + 1] = 240; data[pi + 2] = 240; data[pi + 3] = 255;
+          data[pi] = 15; data[pi + 1] = 15; data[pi + 2] = 15; data[pi + 3] = 255;
         }
       }
 
