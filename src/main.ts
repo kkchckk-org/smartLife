@@ -47,7 +47,9 @@ function loop(time: number) {
     // 圧力 + 指の移動速度で力を決める（速く撫でると大きく揺れる）
     const speed = Math.sqrt(input.vx * input.vx + input.vy * input.vy);
     const force = input.pressure * 30 + speed * 0.08;
-    water.disturb(input.x, input.y, force);
+    // ユーザーの波紋：淡いシアン
+    const userTint = { r: 0.3, g: 0.8, b: 1.0 };
+    water.disturb(input.x, input.y, force, userTint);
   }
 
   // 3. 生き物たちを動かす（水面にも影響する）

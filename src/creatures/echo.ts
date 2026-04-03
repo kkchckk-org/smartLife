@@ -182,7 +182,9 @@ export function createEcho(): Creature {
           while (echoState.timer >= echoState.interval && echoState.index < echoState.samples.length) {
             const sample = echoState.samples[echoState.index];
             const appliedForce = sample.force * fadeFactor;
-            water.disturb(sample.x, sample.y, appliedForce);
+            // エコーの波紋：淡いマゼンタ
+            const echoTint = { r: 1.0, g: 0.3, b: 0.7 };
+            water.disturb(sample.x, sample.y, appliedForce, echoTint);
 
             px = sample.x;
             py = sample.y;

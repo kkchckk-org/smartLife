@@ -12,10 +12,17 @@ export interface InputState {
   vy: number;
 }
 
+/** 色の hint。0-1 の RGB 比率 */
+export interface Tint {
+  r: number;  // 0.0 - 1.0
+  g: number;
+  b: number;
+}
+
 /** 水面シミュレーション */
 export interface WaterSurface {
   /** 指定地点に波紋を立てる */
-  disturb(x: number, y: number, force: number): void;
+  disturb(x: number, y: number, force: number, tint?: Tint): void;
   /** dt秒ぶん物理を進める */
   update(dt: number): void;
   /** 指定地点の水面高を返す */
