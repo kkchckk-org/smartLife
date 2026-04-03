@@ -9,16 +9,24 @@
  * 周期が異なるので機械的な繰り返しにならない。
  */
 
-import type { WaterSurface } from '../types';
+import type { WaterSurface, Tint } from '../types';
 
 const CELL = 4;
 const DAMPING = 0.97;
+const COLOR_DAMPING = 0.985;
+const COLOR_INTENSITY = 20.0;
+const COLOR_THRESHOLD = 0.001;
 
 export function createWater(width: number, height: number): WaterSurface {
   let cols = Math.ceil(width / CELL) + 2;
   let rows = Math.ceil(height / CELL) + 2;
   let curr = new Float32Array(cols * rows);
   let prev = new Float32Array(cols * rows);
+
+  // 色チャンネル
+  let tintR = new Float32Array(cols * rows);
+  let tintG = new Float32Array(cols * rows);
+  let tintB = new Float32Array(cols * rows);
 
   let offscreen = new OffscreenCanvas(cols, rows);
   let offCtx = offscreen.getContext('2d')!;
@@ -36,14 +44,20 @@ export function createWater(width: number, height: number): WaterSurface {
       rows = Math.ceil(h / CELL) + 2;
       curr = new Float32Array(cols * rows);
       prev = new Float32Array(cols * rows);
+      tintR = new Float32Array(cols * rows);
+      tintG = new Float32Array(cols * rows);
+      tintB = new Float32Array(cols * rows);
       offscreen = new OffscreenCanvas(cols, rows);
       offCtx = offscreen.getContext('2d')!;
     },
 
-    disturb(x: number, y: number, force: number) {
+    disturb(x: number, y: number, force: number, tint?: Tint) {
       const cc = Math.round(x / CELL);
       const cr = Math.round(y / CELL);
       const radius = 5;
+      const absForce = Math.abs(force);
+      const tintToUse = tint || { r: 1, g: 1, b: 1 };
+
       for (let dr = -radius; dr <= radius; dr++) {
         for (let dc = -radius; dc <= radius; dc++) {
           const c = cc + dc;
@@ -52,7 +66,13 @@ export function createWater(width: number, height: number): WaterSurface {
             const dist = Math.sqrt(dc * dc + dr * dr);
             if (dist <= radius) {
               const falloff = 1 - dist / radius;
-              curr[idx(c, r)] += force * falloff * falloff;
+              const i = idx(c, r);
+              curr[i] += force * falloff * falloff;
+              // 色注入
+              const colorAmount = absForce * falloff * falloff;
+              tintR[i] += colorAmount * tintToUse.r;
+              tintG[i] += colorAmount * tintToUse.g;
+              tintB[i] += colorAmount * tintToUse.b;
             }
           }
         }
@@ -96,6 +116,28 @@ export function createWater(width: number, height: number): WaterSurface {
       }
       prev = curr;
       curr = next;
+
+      // --- 色チャンネルの拡散（熱方程式） ---
+      const nextTintR = new Float32Array(cols * rows);
+      const nextTintG = new Float32Array(cols * rows);
+      const nextTintB = new Float32Array(cols * rows);
+
+      for (let r = 1; r < rows - 1; r++) {
+        for (let c = 1; c < cols - 1; c++) {
+          const i = idx(c, r);
+          const il = idx(c - 1, r);
+          const ir = idx(c + 1, r);
+          const iu = idx(c, r - 1);
+          const id = idx(c, r + 1);
+
+          nextTintR[i] = (tintR[il] + tintR[ir] + tintR[iu] + tintR[id]) / 4 * COLOR_DAMPING;
+          nextTintG[i] = (tintG[il] + tintG[ir] + tintG[iu] + tintG[id]) / 4 * COLOR_DAMPING;
+          nextTintB[i] = (tintB[il] + tintB[ir] + tintB[iu] + tintB[id]) / 4 * COLOR_DAMPING;
+        }
+      }
+      tintR = nextTintR;
+      tintG = nextTintG;
+      tintB = nextTintB;
     },
 
     heightAt(x: number, y: number): number {
@@ -123,12 +165,34 @@ export function createWater(width: number, height: number): WaterSurface {
           // 黒ベース: 凹凸を光として表現
           const base = 15;
           const shadow = light * 60;
+          const brightness = Math.max(0, Math.min(255, base + shadow));
 
-          const v = Math.max(0, Math.min(255, base + shadow));
+          // 色チャンネルの処理
+          const i = idx(c, r);
+          const totalTint = tintR[i] + tintG[i] + tintB[i];
+          const colorMix = Math.min(1, totalTint * COLOR_INTENSITY);
+
+          let normR = 1;
+          let normG = 1;
+          let normB = 1;
+
+          if (totalTint > COLOR_THRESHOLD) {
+            normR = tintR[i] / totalTint;
+            normG = tintG[i] / totalTint;
+            normB = tintB[i] / totalTint;
+          }
+
+          // lerp: a + (b - a) * t
+          const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+          const r_val = Math.max(0, Math.min(255, brightness * lerp(1, normR * 1.5, colorMix)));
+          const g_val = Math.max(0, Math.min(255, brightness * lerp(1, normG * 1.5, colorMix)));
+          const b_val = Math.max(0, Math.min(255, brightness * lerp(1, normB * 1.5, colorMix)));
+
           const pi = (r * cols + c) * 4;
-          data[pi] = v;
-          data[pi + 1] = v;
-          data[pi + 2] = v;
+          data[pi] = r_val;
+          data[pi + 1] = g_val;
+          data[pi + 2] = b_val;
           data[pi + 3] = 255;
         }
       }
